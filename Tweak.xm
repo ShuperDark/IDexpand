@@ -292,10 +292,14 @@ struct FullBlock {
 	FullBlock(BlockID tileId, unsigned char aux_) : id(tileId), aux(aux_) {}
 };
 
+struct ItemGraphics {
+	char filler[0x40] {};
+};
+std::vector<ItemGraphics>* ItemRenderer$mItemGraphics;
+
 namespace Json { class Value; }
 
 Item*** Item$mItems;
-uint8_t** ItemRenderer$mItemGraphics;
 
 typedef void (*MSHookMemory_ptr_t)(void *target, const void *data, size_t size);
 
@@ -639,37 +643,41 @@ void patchItemPtr() {
 }
 
 void patchItemLimit() {
-	// 0x100756c70(0x102e500)  ItemInstance::ItemInstance(int, int, int)
-	uint8_t patch_1[] = { 0x3f, 0x10, 0x40, 0x71 };
-	patch(0x100756C7C, patch_1, 4);
-	// 0x100756d24(0x102e5a0)  ItemInstance::ItemInstance(int, int, int, CompoundTag const*)
-	uint8_t patch_2[] = { 0x3f, 0x10, 0x40, 0x71 };
-	patch(0x100756D44, patch_2, 4);
-	// 0x100756e7c(0x102e684)  ItemInstance::ItemInstance(ItemInstance const&)
-	uint8_t patch_3[] = { 0x1f, 0x11, 0x40, 0x71 };
-	patch(0x100756ED8, patch_3, 4);
-	// 0x1007569a4(0x102e2e4)  ItemInstance::ItemInstance(Item const*, int)
-	uint8_t patch_4[] = { 0x1f, 0x11, 0x40, 0x71 };
-	patch(0x1007569B4, patch_4, 4);
-	// 0x100756b14(0x102e420)  ItemInstance::ItemInstance(Item const*, int, int, CompoundTag const*)
-	uint8_t patch_5[] = { 0x1f, 0x11, 0x40, 0x71 };
-	patch(0x100756B38, patch_5, 4);
-	// 0x1007568E8             ItemInstance::ItemInstance(Item const*, int, int)
-	uint8_t patch_6[] = { 0x1f, 0x11, 0x40, 0x71 };
-	patch(0x1007568FC, patch_6, 4);
+    // 0x100756c70(0x102e500)  ItemInstance::ItemInstance(int, int, int)
+    uint8_t patch_1[] = { 0x3f, 0x10, 0x40, 0x71 };
+    patch(0x100756C7C, patch_1, 4);
+    // 0x100756d24(0x102e5a0)  ItemInstance::ItemInstance(int, int, int, CompoundTag const*)
+    uint8_t patch_2[] = { 0x3f, 0x10, 0x40, 0x71 };
+    patch(0x100756D44, patch_2, 4);
+    // 0x100756e7c(0x102e684)  ItemInstance::ItemInstance(ItemInstance const&)
+    uint8_t patch_3[] = { 0x1f, 0x11, 0x40, 0x71 };
+    patch(0x100756ED8, patch_3, 4);
+    // 0x1007569a4(0x102e2e4)  ItemInstance::ItemInstance(Item const*, int)
+    uint8_t patch_4[] = { 0x1f, 0x11, 0x40, 0x71 };
+    patch(0x1007569B4, patch_4, 4);
+    // 0x100756b14(0x102e420)  ItemInstance::ItemInstance(Item const*, int, int, CompoundTag const*)
+    uint8_t patch_5[] = { 0x1f, 0x11, 0x40, 0x71 };
+    patch(0x100756B38, patch_5, 4);
+    // 0x1007568E8             ItemInstance::ItemInstance(Item const*)
+    uint8_t patch_6[] = { 0x1f, 0x11, 0x40, 0x71 };
+    patch(0x1007568FC, patch_6, 4);
+    // 0x100756A5C             ItemInstance::ItemInstance(Item const*, int, int)
+    uint8_t patch_7[] = { 0x1f, 0x11, 0x40, 0x71 };
+    patch(0x100756A6C, patch_7, 4);
+    // 0x100758EAC             ItemInstance::load
+    uint8_t patch_8[] = { 0x3f, 0x05, 0x40, 0x71 };
+    patch(0x100759370, patch_8, 4);
 }
 
 static void (*_ItemRenderer$createSingleton)(void* textureGroup);
 static void ItemRenderer$createSingleton(void* textureGroup) {
         _ItemRenderer$createSingleton(textureGroup);
 
-    uint8_t* newArr = new uint8_t[0x40 * 4096];
-    memcpy(newArr, *ItemRenderer$mItemGraphics, 0x40 * 512);
+        ItemRenderer$mItemGraphics->resize(4096);
 
-    *ItemRenderer$mItemGraphics = newArr;
-    for(int i = 512; i < 4096; i++) {
-        memcpy(&newArr[0x40 * i], &newArr[0x40 * 256], 0x40);
-    }
+        for(int i = 512; i < 4096; i++) {
+        	(*ItemRenderer$mItemGraphics)[i] = (*ItemRenderer$mItemGraphics)[256];
+        }
 }
 
 %ctor {
@@ -681,7 +689,7 @@ static void ItemRenderer$createSingleton(void* textureGroup) {
 	Item$mItems[1] = new Item*[4096];
 	memset(Item$mItems[1], 0, sizeof(Item*) * 4096);
 
-	ItemRenderer$mItemGraphics = (uint8_t**)(0x10126b4e8 + _dyld_get_image_vmaddr_slide(0));
+	ItemRenderer$mItemGraphics = (std::vector<ItemGraphics>*)(0x10126b4e8 + _dyld_get_image_vmaddr_slide(0));
 
 	MSHookFunction((void*)(0x1003cc458 + _dyld_get_image_vmaddr_slide(0)), (void*)&ItemRenderer$createSingleton, (void**)&_ItemRenderer$createSingleton);
 }
